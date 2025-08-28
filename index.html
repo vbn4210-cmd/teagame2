@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>茶葉翻牌展示 - HTML5版</title>
+<style>
+  body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f5f0e9; margin:0; padding:0; }
+  h1 { margin-top: 20px; }
+  #game { display: grid; grid-template-columns: repeat(6, 120px); grid-gap: 15px; margin-top: 20px; }
+  .card { width: 120px; height: 160px; perspective: 1000px; cursor: pointer; }
+  .card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; }
+  .card.flipped .card-inner { transform: rotateY(180deg); }
+  .card-front, .card-back {
+    position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 8px;
+    display: flex; justify-content: center; align-items: center; padding: 5px; box-sizing: border-box;
+  }
+  .card-front { background: #fff; border: 1px solid #ccc; flex-direction: column; }
+  .card-front img { max-width: 80px; max-height: 80px; margin-bottom: 5px; }
+  .card-back { background: #96d38f; color: #fff; transform: rotateY(180deg); font-size: 12px; padding: 10px;
+               overflow-wrap: break-word; text-align: center; }
+</style>
+</head>
+<body>
+<h1>今天你是哪一味？</h1>
+<div id="game"></div>
+
+<!-- 翻牌音效 -->
+<audio id="flipSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" preload="auto"></audio>
+
+<script>
+const teaCards = [
+  {name: "桂花紅茶", img:"images/01.png", info:"色香味：紅褐透亮、花果香、甘醇微甜"},
+  {name: "東方美人茶(白毫烏龍)", img:"images/02.png", info:"色香味：琥珀金亮、蜜果香、甘甜滑順"},
+  {name: "梨山烏龍", img:"images/03.png", info:"色香味：淡黃翠綠、蘭花香、清爽甘甜"},
+  {name: "阿里山烏龍", img:"images/04.png", info:"色香味：金黃透亮、清香馥郁、甘潤回甘"},
+  {name: "阿薩姆紅茶", img:"images/05.png", info:"色香味：深紅濃亮、麥芽香、濃厚甘醇"},
+  {name: "古早味紅茶", img:"images/06.png", info:"色香味：深褐紅亮、焦糖香、濃郁甘甜"},
+  {name: "復刻紅茶", img:"images/07.png", info:"色香味：紅褐透亮、麥香果香、甘醇順口"},
+  {name: "鐵觀音", img:"images/08.png", info:"色香味：深橙紅亮、焦糖花香、醇厚回甘"},
+  {name: "茉莉綠茶", img:"images/09.png", info:"色香味：淡黃翠綠、茉莉花香、清新微甘"},
+  {name: "普洱茶", img:"images/10.png", info:"色香味：深褐濃亮、陳香木香、醇厚微澀"},
+  {name: "菊花普洱茶", img:"images/25.png", info:"色香味：深褐金黃、菊香陳香、醇甘微苦"},
+  {name: "曼寧<br>薰衣草茶", img:"images/12.png", info:"色香味：淡紫金黃、花草香、微甜草本"},
+  {name: "曼寧康福茶", img:"images/13.png", info:"色香味：淡黃透亮、薄荷香、清涼甘甜"},
+  {name: "曼寧<br>洋甘菊茶", img:"images/29.png", info:"色香味：淡黃清亮、甘菊香、微甜柔和"},
+  {name: "黃金蕎麥茶", img:"images/14.png", info:"色香味：金黃透亮、穀香濃郁、甘香順口"},
+  {name: "青仁黑豆茶", img:"images/15.png", info:"色香味：深褐清亮、豆香濃郁、醇厚微甜"},
+  {name: "伯爵<br>薰衣草紅茶", img:"images/16.png", info:"色香味：紅褐透亮、果香花香、甘醇微澀"},
+  {name: "桂花烏龍", img:"images/17.png", info:"色香味：金黃翠綠、花香清雅、甘潤滑順"},
+  {name: "日月潭<br>紅玉紅茶", img:"images/18.png", info:"色香味：深紅亮澤、蜜果香、甘甜滑順"},
+  {name: "四季春", img:"images/19.png", info:"色香味：淡黃翠綠、花果香、清爽甘甜"},
+  {name: "洛神<br>玫瑰花茶", img:"images/20.png", info:"色香味：紅紫透亮、花果香、微酸甘甜"},
+  {name: "紅烏龍(蜜香)", img:"images/21.png", info:"色香味：紅褐金亮、蜜果香、醇厚回甘"},
+  {name: "金萱烏龍", img:"images/27.png", info:"色香味：金黃翠綠、奶香花香、甘潤滑順"},
+  {name: "碧螺春", img:"images/22.png", info:"色香味：淡綠清亮、草香清新、微澀回甘"},
+  {name: "油切綠茶", img:"images/23.png", info:"色香味：淡黃翠綠、清香淡雅、微澀清爽"},
+  {name: "日式綠茶", img:"images/24.png", info:"色香味：深綠透亮、海苔草香、微苦清爽"},
+  {name: "玫瑰花草茶", img:"images/28.png", info:"色香味：淡粉透亮、花香濃郁、微甜柔和"},
+  {name: "洋甘菊茶", img:"images/29.png", info:"色香味：淡黃透亮、花香清新、微甜草本"},
+  {name: "白桃紅茶", img:"images/30.png", info:"色香味：琥珀紅亮、果香濃郁、清甜回甘"},
+
+];
+
+// 隨機打亂陣列
+function shuffle(array) {
+  for(let i=array.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+const game = document.getElementById('game');
+const flipSound = document.getElementById('flipSound');
+const shuffledCards = shuffle([...teaCards]);
+
+shuffledCards.forEach(card => {
+  const cardEl = document.createElement('div');
+  cardEl.classList.add('card');
+  cardEl.innerHTML = `
+    <div class="card-inner">
+      <div class="card-front">
+        <img src="${card.img}" alt="${card.name}">
+        <div>${card.name}</div>
+      </div>
+      <div class="card-back">${card.info}</div>
+    </div>
+  `;
+  
+  cardEl.addEventListener('click', () => {
+    cardEl.classList.toggle('flipped');
+    flipSound.currentTime = 0;
+    flipSound.play();
+  });
+
+  game.appendChild(cardEl);
+});
+</script>
+</body>
+</html>
